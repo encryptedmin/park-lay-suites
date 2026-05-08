@@ -1,0 +1,252 @@
+﻿{% extends 'core/base.html' %}
+
+{% block content %}
+<section class="dashboard-page">
+    <div class="dashboard-hero">
+        <div>
+            <p class="eyebrow">Employee Suite</p>
+            <h1>Manage rooms, bookings, and approvals from one dashboard</h1>
+            <p class="hero-copy">A polished operations hub with clear booking workflows, room previews, and quick actions for your team.</p>
+        </div>
+        <div class="hero-actions">
+            <a href="{% url 'add_room' %}" class="btn btn-primary">Add New Room</a>
+            <a href="{% url 'manage_customers' %}" class="btn btn-secondary">Manage Customers</a>
+            <a href="{% url 'add_gcash_account' %}" class="btn btn-secondary">Add GCash Account</a>
+        </div>
+    </div>
+
+    <div class="dashboard-summary-cards">
+        <article class="summary-card">
+            <span class="summary-title">Room inventory</span>
+            <strong>{{ rooms|length }}</strong>
+            <span class="summary-copy">Total room types uploaded to the system.</span>
+        </article>
+        <article class="summary-card">
+            <span class="summary-title">Pending approvals</span>
+            <strong>{{ pending_bookings|length }}</strong>
+            <span class="summary-copy">Bookings that need confirmation.</span>
+        </article>
+        <article class="summary-card">
+            <span class="summary-title">Confirmed stays</span>
+            <strong>{{ confirmed_bookings|length }}</strong>
+            <span class="summary-copy">Active confirmed and walk-in reservations.</span>
+        </article>
+        <article class="summary-card">
+            <span class="summary-title">Customers</span>
+            <strong>{{ customers|length }}</strong>
+            <span class="summary-copy">Customer profiles employees can manage.</span>
+        </article>
+    </div>
+
+    <div class="dashboard-grid">
+        <section class="glass-card panel-bookings">
+            <div class="panel-header">
+                <div>
+                    <h2>Pending bookings</h2>
+                    <p>Verify payments and confirm guest reservations quickly.</p>
+                </div>
+                <span class="pill">{{ pending_bookings|length }} pending</span>
+            </div>
+            <div class="table-scroll">
+                <table class="dashboard-table">
+                    <thead>
+                        <tr>
+                            <th>Guest</th>
+                            <th>Room</th>
+                            <th>Dates</th>
+                            <th>Price</th>
+                            <th>Proof</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for b in pending_bookings %}
+                        <tr>
+                            <td>{{ b.guest_name }}</td>
+                            <td>{{ b.room.name }}</td>
+                            <td>{{ b.check_in }} – {{ b.check_out }}</td>
+                            <td>PHP {{ b.total_price }}</td>
+                            <td>
+                                {% if b.payment_proof %}
+                                <a href="{{ b.payment_proof.url }}" target="_blank" class="table-link">View</a>
+                                {% else %}<span class="muted">N/A</span>{% endif %}
+                            </td>
+                            <td>
+                                <div class="booking-actions">
+                                    <form action="{% url 'confirm_booking' b.id %}" method="post" class="inline-form">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-success">Confirm</button>
+                                    </form>
+                                    <form action="{% url 'reject_booking' b.id %}" method="post" class="inline-form">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger">Reject</button>
+                                    </form>
+                                    <a href="{% url 'edit_booking' b.id %}" class="btn btn-secondary action-btn">Edit</a>
+                                    <form action="{% url 'cancel_booking' b.id %}" method="post" class="inline-form">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger action-btn" onclick="return confirm('Cancel this booking? Paid transactions are final and non-refundable.')">Cancel</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="empty-state">No pending bookings currently.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="glass-card panel-rooms">
+            <div class="panel-header">
+                <div>
+                    <h2>Uploaded rooms</h2>
+                    <p>See your live inventory with cover images, price, and units at a glance.</p>
+                </div>
+                <span class="pill">{{ rooms|length }} rooms</span>
+            </div>
+            <div class="room-grid">
+                {% for r in rooms %}
+                <article class="room-card">
+                    <div class="room-image-wrap">
+                        {% if r.image %}
+                        <img src="{{ r.image.url }}" alt="{{ r.name }}" class="room-image">
+                        {% else %}
+                        <div class="room-image-placeholder">No image</div>
+                        {% endif %}
+                    </div>
+                    <div class="room-card-body">
+                        <h3>{{ r.name }}</h3>
+                        <p class="room-meta">PHP {{ r.price }} / night • {{ r.total_quantity }} units</p>
+                        <p class="room-copy">{{ r.inclusions|truncatechars:90 }}</p>
+                    </div>
+                    <div class="room-card-footer">
+                        <a href="{% url 'edit_room' r.id %}" class="btn btn-secondary">Edit Room</a>
+                    </div>
+                </article>
+                {% empty %}
+                <div class="empty-state-card">No rooms uploaded yet. Add your first room to begin accepting bookings.</div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="glass-card panel-gcash">
+            <div class="panel-header">
+                <div>
+                    <h2>GCash payment accounts</h2>
+                    <p>Manage QR codes and account details customers see when paying for online bookings.</p>
+                </div>
+                <a href="{% url 'add_gcash_account' %}" class="btn btn-secondary panel-action-btn">Add Account</a>
+            </div>
+
+            <div class="gcash-card-grid">
+                {% for account in gcash_accounts %}
+                <article class="gcash-card">
+                    <div class="gcash-qr-wrap">
+                        <img src="{{ account.qr_code.url }}" alt="{{ account.account_name }} GCash QR code" class="gcash-qr-image">
+                    </div>
+                    <div class="gcash-card-body">
+                        <span class="summary-title">GCash account</span>
+                        <h3>{{ account.account_name }}</h3>
+                        <p>{{ account.account_number }}</p>
+                    </div>
+                    <div class="gcash-card-actions">
+                        <a href="{% url 'edit_gcash_account' account.id %}" class="btn btn-secondary">Edit</a>
+                        <form action="{% url 'delete_gcash_account' account.id %}" method="post" class="inline-form">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger" onclick="return confirm('Delete this GCash account?')">Delete</button>
+                        </form>
+                    </div>
+                </article>
+                {% empty %}
+                <div class="empty-state-card">No GCash payment accounts yet. Add one so customers can scan and pay during booking.</div>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <section class="glass-card panel-confirmed">
+        <div class="panel-header">
+            <div>
+                <h2>Confirmed & walk-in bookings</h2>
+                <p>Track active reservations, stay types, and guest details in one place.</p>
+            </div>
+            <span class="pill">{{ confirmed_bookings|length }} total</span>
+        </div>
+        <div class="table-scroll">
+            <table class="dashboard-table">
+                <thead>
+                    <tr>
+                        <th>Guest</th>
+                        <th>Type</th>
+                        <th>Room</th>
+                        <th>Dates</th>
+                        <th>Price</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in confirmed_bookings %}
+                    <tr>
+                        <td>{{ b.guest_name }}</td>
+                        <td>{{ b.booking_type }}</td>
+                        <td>{{ b.room.name }}</td>
+                        <td>{{ b.check_in }} – {{ b.check_out }}</td>
+                        <td>PHP {{ b.total_price }}</td>
+                        <td>
+                            <div class="booking-actions">
+                                <a href="{% url 'edit_booking' b.id %}" class="btn btn-secondary action-btn">Edit</a>
+                                <form action="{% url 'cancel_booking' b.id %}" method="post" class="inline-form">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger action-btn" onclick="return confirm('Cancel this booking? Paid transactions are final and non-refundable.')">Cancel</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="empty-state">No confirmed bookings yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="glass-card panel-confirmed">
+        <div class="panel-header">
+            <div>
+                <h2>Closed bookings</h2>
+                <p>Recently rejected or cancelled bookings stay visible for staff reference.</p>
+            </div>
+            <span class="pill">{{ closed_bookings|length }} recent</span>
+        </div>
+        <div class="table-scroll">
+            <table class="dashboard-table">
+                <thead>
+                    <tr>
+                        <th>Guest</th>
+                        <th>Status</th>
+                        <th>Type</th>
+                        <th>Room</th>
+                        <th>Dates</th>
+                        <th>Price</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in closed_bookings %}
+                    <tr>
+                        <td>{{ b.guest_name }}</td>
+                        <td>{{ b.status }}</td>
+                        <td>{{ b.booking_type }}</td>
+                        <td>{{ b.room.name }}</td>
+                        <td>{{ b.check_in }} – {{ b.check_out }}</td>
+                        <td>PHP {{ b.total_price }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="empty-state">No closed bookings yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
+{% endblock %}

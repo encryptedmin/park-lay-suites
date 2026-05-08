@@ -1,0 +1,165 @@
+﻿{% extends 'core/base.html' %}
+{% block content %}
+<section class="customer-home-page">
+    <div class="home-hero">
+        <div>
+            <p class="eyebrow">Accommodation</p>
+            <h1>Browse and book your stay</h1>
+            <p>Check room availability before logging in or creating an account, then continue only when your preferred dates are open.</p>
+        </div>
+    </div>
+
+    <section class="public-availability-panel">
+        <div>
+            <h2>Check availability</h2>
+            <p>Select your stay dates to see which rooms are available before you sign in.</p>
+        </div>
+        <div class="public-date-fields">
+            <label>
+                Check-in
+                <input type="date" id="public-check-in">
+            </label>
+            <label>
+                Check-out
+                <input type="date" id="public-check-out">
+            </label>
+        </div>
+    </section>
+
+    <div class="room-grid">
+        {% for room in rooms %}
+        <div class="card customer-room-card" data-room-card data-room-id="{{ room.id }}">
+            {% if room.image %}
+                <img src="{{ room.image.url }}" class="preview" alt="{{ room.name }}">
+            {% endif %}
+            <div class="card-content">
+                <div class="customer-room-status" data-room-status="{{ room.id }}">
+                    <span class="available-dot"></span>
+                    <span>Choose dates to check availability</span>
+                </div>
+                <h3>{{ room.name }}</h3>
+                <p><strong>Inclusions:</strong><br> {{ room.inclusions }}</p>
+                <div class="price-tag">PHP {{ room.price }} <span style="font-size:0.8rem; font-weight:400; color:#6B7280;">/ night</span></div>
+                <a href="{% url 'book_room' room.id %}" class="btn customer-book-link" data-book-url="{% url 'book_room' room.id %}">Book this room</a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state-card">No rooms are available to browse yet.</div>
+        {% endfor %}
+    </div>
+</section>
+
+{{ room_data|json_script:"public-room-data" }}
+{{ confirmed_bookings_data|json_script:"public-confirmed-bookings-data" }}
+
+<script>
+(function() {
+    const roomData = JSON.parse(document.getElementById('public-room-data').textContent);
+    const confirmedBookings = JSON.parse(document.getElementById('public-confirmed-bookings-data').textContent);
+    const checkInInput = document.getElementById('public-check-in');
+    const checkOutInput = document.getElementById('public-check-out');
+    const roomCards = Array.from(document.querySelectorAll('[data-room-card]'));
+
+    function parseDate(value) {
+        return value ? new Date(value + 'T00:00:00') : null;
+    }
+
+    function calculateNights(checkIn, checkOut) {
+        if (!checkIn || !checkOut) return 0;
+        const diff = (checkOut - checkIn) / (1000 * 60 * 60 * 24);
+        return diff > 0 ? diff : 0;
+    }
+
+    function getRoomById(roomId) {
+        return roomData.find(room => String(room.id) === String(roomId));
+    }
+
+    function countOverlappingBookings(roomId, checkIn, checkOut) {
+        if (!checkIn || !checkOut) return 0;
+        return confirmedBookings.filter(booking => {
+            if (String(booking.room_id) !== String(roomId)) return false;
+            const bookingStart = parseDate(booking.check_in);
+            const bookingEnd = parseDate(booking.check_out);
+            return bookingStart < checkOut && bookingEnd > checkIn;
+        }).length;
+    }
+
+    function updateBookLink(link, checkIn, checkOut) {
+        const baseUrl = link.dataset.bookUrl;
+        if (!checkInInput.value || !checkOutInput.value) {
+            link.href = baseUrl;
+            return;
+        }
+
+        const params = new URLSearchParams({
+            check_in: checkInInput.value,
+            check_out: checkOutInput.value,
+        });
+        link.href = `${baseUrl}?${params.toString()}`;
+    }
+
+    function updateAvailability() {
+        const checkIn = parseDate(checkInInput.value);
+        const checkOut = parseDate(checkOutInput.value);
+        const nights = calculateNights(checkIn, checkOut);
+
+        roomCards.forEach(card => {
+            const room = getRoomById(card.dataset.roomId);
+            const status = card.querySelector('[data-room-status]');
+            const statusText = status.querySelector('span:last-child');
+            const statusDot = status.querySelector('.available-dot');
+            const bookLink = card.querySelector('.customer-book-link');
+
+            card.classList.remove('is-available', 'is-unavailable');
+            statusDot.classList.remove('unavailable');
+            bookLink.classList.remove('is-disabled');
+            bookLink.removeAttribute('aria-disabled');
+            updateBookLink(bookLink, checkIn, checkOut);
+
+            if (!room) return;
+
+            if (!checkIn || !checkOut) {
+                statusText.textContent = `${room.total_quantity} room${room.total_quantity === 1 ? '' : 's'} in inventory. Choose dates to check.`;
+                bookLink.textContent = 'Book this room';
+                return;
+            }
+
+            if (nights <= 0) {
+                statusText.textContent = 'Check-out must be after check-in.';
+                statusDot.classList.add('unavailable');
+                card.classList.add('is-unavailable');
+                bookLink.classList.add('is-disabled');
+                bookLink.setAttribute('aria-disabled', 'true');
+                bookLink.textContent = 'Fix dates to book';
+                return;
+            }
+
+            const overlapping = countOverlappingBookings(room.id, checkIn, checkOut);
+            const available = room.total_quantity - overlapping;
+
+            if (available > 0) {
+                statusText.textContent = `${available} available for ${nights} night${nights === 1 ? '' : 's'}`;
+                card.classList.add('is-available');
+                bookLink.textContent = 'Continue booking';
+            } else {
+                statusText.textContent = 'Fully booked for these dates';
+                statusDot.classList.add('unavailable');
+                card.classList.add('is-unavailable');
+                bookLink.classList.add('is-disabled');
+                bookLink.setAttribute('aria-disabled', 'true');
+                bookLink.textContent = 'Unavailable';
+            }
+        });
+    }
+
+    document.addEventListener('click', event => {
+        const disabledLink = event.target.closest('.customer-book-link.is-disabled');
+        if (disabledLink) event.preventDefault();
+    });
+
+    checkInInput.addEventListener('change', updateAvailability);
+    checkOutInput.addEventListener('change', updateAvailability);
+    updateAvailability();
+})();
+</script>
+{% endblock %}

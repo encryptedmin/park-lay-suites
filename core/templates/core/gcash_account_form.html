@@ -1,0 +1,24 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<section class="payment-account-page">
+    <div class="payment-account-form-card">
+        <a href="{% url 'employee_dashboard' %}" class="back-link">Back to dashboard</a>
+        <h1>{{ title }}</h1>
+        <p>{{ subtitle }}</p>
+
+        {% if account and account.qr_code %}
+        <div class="current-qr-preview">
+            <img src="{{ account.qr_code.url }}" alt="{{ account.account_name }} GCash QR code">
+            <span>Current QR code</span>
+        </div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-primary">{{ button_label }}</button>
+        </form>
+    </div>
+</section>
+{% endblock %}

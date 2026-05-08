@@ -1,0 +1,26 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="form-container">
+    <h1>Login</h1>
+    <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem;">Welcome back to Park-Lay Suites.</p>
+    
+    <form method="post">
+        {% csrf_token %}
+        {% if next %}
+        <input type="hidden" name="next" value="{{ next }}">
+        {% endif %}
+        
+        {{ form.as_p }}
+        
+        <button type="submit" class="btn">Sign In</button>
+    </form>
+    
+    <div style="text-align: center; margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+        <p style="font-size: 0.9rem; color: var(--text-light);">
+            Don't have an account yet? 
+            <a href="{% url 'register' %}" style="color: var(--primary); font-weight: 600; text-decoration: none;">Register here</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

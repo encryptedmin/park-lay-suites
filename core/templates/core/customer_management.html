@@ -1,0 +1,70 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<section class="management-page">
+    <div class="management-header">
+        <div>
+            <p class="eyebrow">Customer Profiles</p>
+            <h1>Manage customers</h1>
+            <p>Employees can add, view, update, and delete customer profiles from this separate workspace.</p>
+        </div>
+        <div class="hero-actions">
+            <a href="{% url 'employee_dashboard' %}" class="btn btn-secondary">Back to dashboard</a>
+            <a href="{% url 'add_customer' %}" class="btn btn-primary">Add Customer</a>
+        </div>
+    </div>
+
+    <section class="glass-card">
+        <div class="panel-header">
+            <div>
+                <h2>Customer directory</h2>
+                <p>Review contact details, account status, and linked bookings.</p>
+            </div>
+            <span class="pill">{{ customers|length }} customers</span>
+        </div>
+
+        <div class="table-scroll">
+            <table class="dashboard-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Joined</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for customer in customers %}
+                    <tr>
+                        <td>{{ customer.first_name }} {{ customer.last_name }}</td>
+                        <td>{{ customer.username }}</td>
+                        <td>{{ customer.email|default:"N/A" }}</td>
+                        <td>
+                            {% if customer.is_active %}
+                            <span class="status-chip status-active">Active</span>
+                            {% else %}
+                            <span class="status-chip status-inactive">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ customer.date_joined|date:"M d, Y" }}</td>
+                        <td>
+                            <div class="booking-actions">
+                                <a href="{% url 'edit_customer' customer.id %}" class="btn btn-secondary action-btn">Edit</a>
+                                <form action="{% url 'delete_customer' customer.id %}" method="post" class="inline-form">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger action-btn" onclick="return confirm('Delete this customer profile and related bookings?')">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="empty-state">No customer profiles yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</section>
+{% endblock %}

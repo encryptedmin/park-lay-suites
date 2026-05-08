@@ -1,0 +1,28 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<section class="payment-account-page">
+    <div class="payment-account-form-card">
+        <a href="{% if is_employee_view %}{% url 'employee_dashboard' %}{% else %}{% url 'customer_dashboard' %}{% endif %}" class="back-link">Back to bookings</a>
+        <h1>Modify booking #{{ booking.id }}</h1>
+        <p>Update the guest, room, or stay dates. All paid transactions are final and non-refundable.</p>
+
+        <div class="policy-note">
+            <strong>Non-refundable payment policy</strong>
+            <p>If a modification lowers the total, the difference is not refunded. If it increases the total, staff may collect any remaining balance separately.</p>
+        </div>
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="form-alert form-alert-error">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            {{ form.as_p }}
+
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+        </form>
+    </div>
+</section>
+{% endblock %}

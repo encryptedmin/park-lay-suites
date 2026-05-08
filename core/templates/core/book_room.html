@@ -1,0 +1,231 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<section class="booking-page">
+    <div class="booking-header">
+        <a href="{% url 'customer_home' %}" class="back-link">← Back to rooms</a>
+        <h1>Complete your booking</h1>
+        <p>Review the room details, set your stay dates, upload payment proof, and submit your reservation for verification.</p>
+    </div>
+
+    <div class="booking-grid">
+        <article class="booking-form-section">
+            <h2>Booking details</h2>
+            <p class="section-copy">Fill in your stay information and provide payment verification. Your booking will be reviewed by our team within 24 hours.</p>
+
+            {% if form.non_field_errors %}
+            <div class="form-alert form-alert-error">
+                {% for error in form.non_field_errors %}
+                    <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data" novalidate>
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label for="id_check_in">Check-in date</label>
+                    {{ form.check_in }}
+                    {% if form.check_in.errors %}
+                    <div class="form-alert form-alert-error">{{ form.check_in.errors }}</div>
+                    {% endif %}
+                    <p class="field-hint">Your arrival date. The room will be ready from 2 PM.</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="id_check_out">Check-out date</label>
+                    {{ form.check_out }}
+                    {% if form.check_out.errors %}
+                    <div class="form-alert form-alert-error">{{ form.check_out.errors }}</div>
+                    {% endif %}
+                    <p class="field-hint">Your departure date. Please vacate by 11 AM.</p>
+                </div>
+
+                <fieldset class="payment-section">
+                    <legend>Payment details</legend>
+                    <p class="section-copy">We accept GCash payments. Send the exact amount to one of the accounts below, then share your reference number and receipt.</p>
+
+                    <div class="customer-payment-grid">
+                        {% for account in gcash_accounts %}
+                        <article class="customer-payment-card">
+                            <div class="customer-payment-qr">
+                                <img src="{{ account.qr_code.url }}" alt="{{ account.account_name }} GCash QR code">
+                            </div>
+                            <div class="customer-payment-details">
+                                <span>GCash account</span>
+                                <strong>{{ account.account_name }}</strong>
+                                <p>{{ account.account_number }}</p>
+                            </div>
+                        </article>
+                        {% empty %}
+                        <div class="payment-empty-state">
+                            GCash payment details are not available yet. Please contact the staff before sending payment.
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_gcash_reference">GCash reference number</label>
+                        {{ form.gcash_reference }}
+                        {% if form.gcash_reference.errors %}
+                        <div class="form-alert form-alert-error">{{ form.gcash_reference.errors }}</div>
+                        {% endif %}
+                        <p class="field-hint">The transaction ID or reference number from your GCash payment.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="id_payment_proof">Payment proof (receipt image)</label>
+                        {{ form.payment_proof }}
+                        {% if form.payment_proof.errors %}
+                        <div class="form-alert form-alert-error">{{ form.payment_proof.errors }}</div>
+                        {% endif %}
+                        <p class="field-hint">Upload a screenshot or image of your payment receipt. Accepted: JPG, PNG, max 5MB.</p>
+                    </div>
+                </fieldset>
+
+                <button type="submit" class="btn btn-primary">Submit booking for verification</button>
+                <p class="form-note">By submitting, you agree to our booking terms. You'll receive a confirmation email once our team verifies your payment.</p>
+            </form>
+        </article>
+
+        <aside class="booking-summary-section">
+            <div class="room-preview-card">
+                <h3>Room details</h3>
+                {% if room.image %}
+                <img src="{{ room.image.url }}" alt="{{ room.name }}" class="preview-image">
+                {% endif %}
+
+                <div class="room-info">
+                    <p class="room-title">{{ room.name }}</p>
+                    <p class="room-price">PHP {{ room.price }}<span class="price-unit"> / night</span></p>
+
+                    <div class="room-features">
+                        <h4>What's included</h4>
+                        <p>{{ room.inclusions }}</p>
+                    </div>
+
+                    <div class="availability-info">
+                        <h4>Availability for selected dates</h4>
+                        <div id="availability-display">
+                            <p><strong>{{ room.total_quantity }}</strong> rooms available</p>
+                        </div>
+                        <div id="availability-status" class="available-status" style="margin-top: 0.5rem;">
+                            <span class="available-dot"></span>
+                            <span id="availability-label">Select check-in and check-out dates</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="booking-estimate-card">
+                <h3>Booking estimate</h3>
+
+                <div class="estimate-row">
+                    <span class="estimate-label">Check-in</span>
+                    <span class="estimate-value" id="preview-checkin">Select date</span>
+                </div>
+
+                <div class="estimate-row">
+                    <span class="estimate-label">Check-out</span>
+                    <span class="estimate-value" id="preview-checkout">Select date</span>
+                </div>
+
+                <div class="estimate-divider"></div>
+
+                <div class="estimate-row">
+                    <span class="estimate-label">Number of nights</span>
+                    <span class="estimate-value" id="preview-nights">0 nights</span>
+                </div>
+
+                <div class="estimate-row">
+                    <span class="estimate-label">Rate per night</span>
+                    <span class="estimate-value">PHP {{ room.price }}</span>
+                </div>
+
+                <div class="estimate-divider"></div>
+
+                <div class="estimate-row estimate-total">
+                    <span class="estimate-label">Total amount</span>
+                    <span class="estimate-value" id="preview-total">PHP 0.00</span>
+                </div>
+
+                <p class="estimate-note">This is your estimated total. It will be confirmed after payment verification.</p>
+            </div>
+        </aside>
+    </div>
+</section>
+
+<script>
+(function() {
+    const checkInInput = document.querySelector('[name="check_in"]');
+    const checkOutInput = document.querySelector('[name="check_out"]');
+    const previewCheckin = document.getElementById('preview-checkin');
+    const previewCheckout = document.getElementById('preview-checkout');
+    const previewNights = document.getElementById('preview-nights');
+    const previewTotal = document.getElementById('preview-total');
+    const availabilityDisplay = document.getElementById('availability-display');
+    const availabilityLabel = document.getElementById('availability-label');
+    const availabilityDot = document.querySelector('#availability-status .available-dot');
+    const roomPrice = {{ room.price }};
+    const totalQuantity = {{ room.total_quantity }};
+    const confirmedBookings = {{ confirmed_bookings_data|safe }};
+
+    function formatDate(dateStr) {
+        if (!dateStr) return 'Select date';
+        const date = new Date(dateStr + 'T00:00:00');
+        return date.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    function calculateNights(checkIn, checkOut) {
+        if (!checkIn || !checkOut) return 0;
+        const start = new Date(checkIn + 'T00:00:00');
+        const end = new Date(checkOut + 'T00:00:00');
+        const diff = (end - start) / (1000 * 60 * 60 * 24);
+        return diff > 0 ? diff : 0;
+    }
+
+    function countOverlappingBookings(checkIn, checkOut) {
+        if (!checkIn || !checkOut) return 0;
+        const checkInDate = new Date(checkIn + 'T00:00:00');
+        const checkOutDate = new Date(checkOut + 'T00:00:00');
+        
+        return confirmedBookings.filter(booking => {
+            const bookingStart = new Date(booking.check_in + 'T00:00:00');
+            const bookingEnd = new Date(booking.check_out + 'T00:00:00');
+            return bookingStart < checkOutDate && bookingEnd > checkInDate;
+        }).length;
+    }
+
+    function updateEstimate() {
+        const checkIn = checkInInput.value;
+        const checkOut = checkOutInput.value;
+        previewCheckin.textContent = formatDate(checkIn);
+        previewCheckout.textContent = formatDate(checkOut);
+
+        const nights = calculateNights(checkIn, checkOut);
+        previewNights.textContent = nights > 0 ? `${nights} night${nights === 1 ? '' : 's'}` : '0 nights';
+
+        const total = nights > 0 ? roomPrice * nights : 0;
+        previewTotal.textContent = `PHP ${total.toFixed(2)}`;
+
+        // Update availability
+        if (checkIn && checkOut && nights > 0) {
+            const overlapping = countOverlappingBookings(checkIn, checkOut);
+            const available = totalQuantity - overlapping;
+            availabilityDisplay.innerHTML = `<p><strong>${available}</strong> room${available !== 1 ? 's' : ''} available</p>`;
+            availabilityLabel.textContent = available > 0 ? `${available} available - Ready to book` : 'Fully booked for these dates';
+            availabilityDot.classList.toggle('unavailable', available <= 0);
+        } else {
+            availabilityDisplay.innerHTML = `<p><strong>${totalQuantity}</strong> rooms available</p>`;
+            availabilityLabel.textContent = 'Select check-in and check-out dates';
+            availabilityDot.classList.remove('unavailable');
+        }
+    }
+
+    checkInInput.addEventListener('change', updateEstimate);
+    checkOutInput.addEventListener('change', updateEstimate);
+    updateEstimate();
+})();
+</script>
+{% endblock %}

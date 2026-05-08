@@ -1,0 +1,324 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<section class="customer-bookings-page">
+    <div class="bookings-header">
+        <div>
+            <h1>My bookings</h1>
+            <p>View the status of your reservations and upcoming stays. Pending bookings are awaiting admin verification.</p>
+        </div>
+        <div class="header-action">
+            <a href="{% url 'customer_home' %}" class="btn btn-secondary">Browse more rooms</a>
+        </div>
+    </div>
+
+    {% if bookings %}
+        <div class="bookings-container">
+            {% for booking in bookings %}
+            <article class="booking-card" data-status="{{ booking.status|lower }}">
+                <div class="booking-status-badge" title="Booking status">
+                    <span class="status-dot status-{{ booking.status|lower }}"></span>
+                    <span class="status-text">{{ booking.get_status_display }}</span>
+                </div>
+
+                <div class="booking-card-header">
+                    <h3>{{ booking.room.name }}</h3>
+                    <p class="booking-reference">Booking ID: #{{ booking.id }}</p>
+                </div>
+
+                <div class="booking-details-grid">
+                    <div class="detail-block">
+                        <span class="detail-label">Check-in</span>
+                        <strong class="detail-value">{{ booking.check_in|date:"M d, Y" }}</strong>
+                    </div>
+                    <div class="detail-block">
+                        <span class="detail-label">Check-out</span>
+                        <strong class="detail-value">{{ booking.check_out|date:"M d, Y" }}</strong>
+                    </div>
+                    <div class="detail-block">
+                        <span class="detail-label">Number of nights</span>
+                        <strong class="detail-value">{{ booking.nights }} night{{ booking.nights|pluralize }}</strong>
+                    </div>
+                    <div class="detail-block">
+                        <span class="detail-label">Total amount</span>
+                        <strong class="detail-value">PHP {{ booking.total_price }}</strong>
+                    </div>
+                </div>
+
+                <div class="booking-type-badge">
+                    <span>{{ booking.booking_type }}</span>
+                </div>
+
+                {% if booking.status == "Pending" %}
+                <div class="booking-status-message pending">
+                    <strong>Verification in progress</strong>
+                    <p>We're reviewing your payment. Most bookings are verified within 24 hours. You'll receive an email confirmation once approved.</p>
+                </div>
+                {% elif booking.status == "Confirmed" %}
+                <div class="booking-status-message confirmed">
+                    <strong>Confirmed and ready</strong>
+                    <p>Your booking is confirmed. Check in on {{ booking.check_in|date:"M d, Y" }} from 2 PM. We look forward to welcoming you!</p>
+                </div>
+                {% elif booking.status == "Cancelled" %}
+                <div class="booking-status-message cancelled">
+                    <strong>Cancelled</strong>
+                    <p>This booking has been cancelled. All paid transactions are final and non-refundable.</p>
+                </div>
+                {% elif booking.status == "Rejected" %}
+                <div class="booking-status-message rejected">
+                    <strong>Rejected</strong>
+                    <p>This booking was not approved. Please contact staff if you need help with another reservation.</p>
+                </div>
+                {% endif %}
+
+                <div class="booking-card-footer">
+                    <div class="booking-meta">
+                        <p class="meta-text">Booked on <strong>{{ booking.created_at|date:"M d, Y" }}</strong></p>
+                    </div>
+                    {% if booking.status == "Pending" or booking.status == "Confirmed" %}
+                    <div class="customer-booking-actions">
+                        <a href="{% url 'edit_booking' booking.id %}" class="btn btn-secondary action-btn">Modify</a>
+                        <form action="{% url 'cancel_booking' booking.id %}" method="post" class="inline-form">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger action-btn" onclick="return confirm('Cancel this booking? Paid transactions are final and non-refundable.')">Cancel</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                    {% if booking.payment_proof %}
+                    <a href="{{ booking.payment_proof.url }}" target="_blank" class="link">View payment receipt</a>
+                    {% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    {% else %}
+    <div class="empty-state-bookings">
+        <div class="empty-icon">📅</div>
+        <h2>No bookings yet</h2>
+        <p>You haven't made any reservations. Start exploring our rooms and book your stay today!</p>
+        <a href="{% url 'customer_home' %}" class="btn btn-primary">View available rooms</a>
+    </div>
+    {% endif %}
+</section>
+
+<style>
+.bookings-container {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.booking-card {
+    background: rgba(255,255,255,0.42);
+    border: 1px solid rgba(255,255,255,0.75);
+    backdrop-filter: blur(22px);
+    border-radius: 28px;
+    padding: 2rem;
+    box-shadow: 0 22px 55px rgba(15, 23, 42, 0.08);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.booking-card:hover {
+    box-shadow: 0 26px 65px rgba(15, 23, 42, 0.12);
+    transform: translateY(-2px);
+}
+
+.booking-status-badge {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.7rem 1.2rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.9);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.status-dot {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 999px;
+    display: inline-block;
+}
+
+.status-dot.status-pending {
+    background: #f59e0b;
+}
+
+.status-dot.status-confirmed {
+    background: #10b981;
+}
+
+.status-dot.status-cancelled,
+.status-dot.status-rejected {
+    background: #ef4444;
+}
+
+.booking-card-header {
+    margin-bottom: 1.5rem;
+}
+
+.booking-card-header h3 {
+    margin-bottom: 0.5rem;
+}
+
+.booking-reference {
+    color: var(--text-light);
+    font-size: 0.95rem;
+}
+
+.booking-details-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.detail-block {
+    padding: 1rem 1.2rem;
+    background: rgba(255,255,255,0.7);
+    border-radius: 18px;
+    border: 1px solid rgba(255,255,255,0.9);
+}
+
+.detail-label {
+    display: block;
+    color: var(--text-light);
+    font-size: 0.9rem;
+    margin-bottom: 0.4rem;
+}
+
+.detail-value {
+    color: var(--primary);
+}
+
+.booking-type-badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 16px;
+    background: rgba(79, 70, 229, 0.1);
+    color: var(--primary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+}
+
+.booking-status-message {
+    padding: 1.2rem 1.5rem;
+    border-radius: 20px;
+    margin-bottom: 1.5rem;
+}
+
+.booking-status-message.pending {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+    color: #92400e;
+}
+
+.booking-status-message.confirmed {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    color: #065f46;
+}
+
+.booking-status-message.cancelled,
+.booking-status-message.rejected {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    color: #991b1b;
+}
+
+.booking-status-message strong {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.booking-status-message p {
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.booking-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255,255,255,0.6);
+    flex-wrap: wrap;
+}
+
+.booking-meta {
+    color: var(--text-light);
+    font-size: 0.9rem;
+}
+
+.link {
+    color: var(--secondary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.customer-booking-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex-wrap: wrap;
+}
+
+.empty-state-bookings {
+    text-align: center;
+    padding: 3rem 2rem;
+    border-radius: 28px;
+    background: rgba(255,255,255,0.42);
+    border: 1px solid rgba(255,255,255,0.75);
+    backdrop-filter: blur(22px);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.empty-state-bookings h2 {
+    margin-bottom: 0.75rem;
+}
+
+.empty-state-bookings p {
+    color: var(--text-light);
+    margin-bottom: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+    .booking-details-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .booking-details-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .booking-card {
+        padding: 1.5rem;
+    }
+
+    .booking-status-badge {
+        position: static;
+        width: fit-content;
+        margin-bottom: 1rem;
+    }
+
+    .booking-card-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+}
+</style>
+{% endblock %}

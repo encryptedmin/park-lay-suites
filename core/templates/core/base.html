@@ -1,0 +1,47 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Park-Lay Suites</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=1.3">
+</head>
+<body>
+    <header>
+        <h2>Park-Lay Suites</h2>
+        <nav>
+            {% if user.is_authenticated %}
+                {% if user.is_employee %}
+                    <a href="{% url 'employee_dashboard' %}">Dashboard</a>
+                    <a href="{% url 'manage_customers' %}">Customers</a>
+                    <a href="{% url 'add_room' %}">Add Room</a>
+                    <a href="{% url 'walkin_booking' %}">Walk-in</a>
+                {% else %}
+                    <a href="{% url 'customer_home' %}">Rooms</a>
+                    <a href="{% url 'customer_dashboard' %}">My Bookings</a>
+                {% endif %}
+                <a href="{% url 'logout' %}">Logout ({{ user.username }})</a>
+            {% else %}
+                <a href="{% url 'customer_home' %}">Home</a>
+                <a href="{% url 'login' %}">Login</a>
+                <a href="{% url 'register' %}">Register</a>
+            {% endif %}
+        </nav>
+    </header>
+    <main class="container">
+        
+        {% if messages %}
+            <div class="message-stack" aria-live="polite">
+                {% for message in messages %}
+                    <div class="flash-message {% if message.tags %}flash-{{ message.tags }}{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

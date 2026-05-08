@@ -1,0 +1,15 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="form-container">
+    <h1>Edit Room: {{ room.name }}</h1>
+    <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem;">Update the details or change the photo for this room.</p>
+    
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        
+        <button type="submit" class="btn btn-success" style="width: 100%;">Update Room</button>
+    </form>
+</div>
+{% endblock %}

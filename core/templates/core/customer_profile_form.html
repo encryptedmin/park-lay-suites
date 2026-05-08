@@ -1,0 +1,23 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<section class="payment-account-page">
+    <div class="payment-account-form-card">
+        <a href="{% url 'manage_customers' %}" class="back-link">Back to customers</a>
+        <h1>{{ title }}</h1>
+        <p>Create or update the customer's login profile and contact details.</p>
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="form-alert form-alert-error">{{ form.non_field_errors }}</div>
+            {% endif %}
+
+            {{ form.as_p }}
+
+            <button type="submit" class="btn btn-primary">{{ button_label }}</button>
+        </form>
+    </div>
+</section>
+{% endblock %}

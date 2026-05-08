@@ -1,0 +1,314 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<section class="walkin-page">
+    <div class="walkin-hero">
+        <div>
+            <p class="eyebrow">Walk-in Booking</p>
+            <h1>Room advisor for walk-in guests</h1>
+            <p>Review room photos, rates, inclusions, and date-based availability before confirming a guest at the front desk.</p>
+        </div>
+        <div class="hero-actions">
+            <a href="{% url 'employee_dashboard' %}" class="btn btn-secondary">Back to dashboard</a>
+        </div>
+    </div>
+
+    {% if form.non_field_errors %}
+    <div class="form-errors">
+        {{ form.non_field_errors }}
+    </div>
+    {% endif %}
+
+    <div class="walkin-shell">
+        <form method="post" class="walkin-booking-form" novalidate>
+            {% csrf_token %}
+
+            <section class="walkin-guest-panel">
+                <div class="panel-header">
+                    <div>
+                        <h2>Guest and stay details</h2>
+                        <p>Set the guest name and travel dates first to update availability for every room.</p>
+                    </div>
+                    <span class="pill">Front desk</span>
+                </div>
+
+                <div class="walkin-field-grid">
+                    <div class="walkin-field">
+                        {{ form.guest_name.label_tag }}
+                        {{ form.guest_name }}
+                        {% if form.guest_name.errors %}
+                        <div class="form-errors">{{ form.guest_name.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="walkin-field">
+                        {{ form.check_in.label_tag }}
+                        {{ form.check_in }}
+                        {% if form.check_in.errors %}
+                        <div class="form-errors">{{ form.check_in.errors }}</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="walkin-field">
+                        {{ form.check_out.label_tag }}
+                        {{ form.check_out }}
+                        {% if form.check_out.errors %}
+                        <div class="form-errors">{{ form.check_out.errors }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="walkin-hidden-field">
+                    {{ form.room }}
+                </div>
+            </section>
+
+            <div class="walkin-content-grid">
+                <section class="walkin-room-browser">
+                    <div class="panel-header">
+                        <div>
+                            <h2>Available room catalog</h2>
+                            <p>Pick a room after comparing the guest-facing details employees usually need to explain.</p>
+                        </div>
+                        <span class="pill">{{ rooms|length }} room types</span>
+                    </div>
+
+                    {% if form.room.errors %}
+                    <div class="form-errors">{{ form.room.errors }}</div>
+                    {% endif %}
+
+                    <div class="walkin-room-grid">
+                        {% for room in rooms %}
+                        <article class="walkin-room-card" data-room-card data-room-id="{{ room.id }}">
+                            <div class="walkin-room-media">
+                                {% if room.image %}
+                                <img src="{{ room.image.url }}" alt="{{ room.name }}">
+                                {% else %}
+                                <div class="walkin-room-placeholder">No image</div>
+                                {% endif %}
+                                <span class="walkin-availability-chip" data-room-availability="{{ room.id }}">Choose dates</span>
+                            </div>
+
+                            <div class="walkin-room-body">
+                                <div>
+                                    <h3>{{ room.name }}</h3>
+                                    <p class="walkin-room-price">PHP {{ room.price }} <span>/ night</span></p>
+                                </div>
+                                <p class="walkin-room-copy">{{ room.inclusions }}</p>
+                            </div>
+
+                            <div class="walkin-room-footer">
+                                <span>{{ room.total_quantity }} units</span>
+                                <button type="button" class="btn btn-secondary walkin-select-room" data-select-room="{{ room.id }}">Select room</button>
+                            </div>
+                        </article>
+                        {% empty %}
+                        <div class="empty-state-card">No rooms uploaded yet. Add rooms before creating walk-in bookings.</div>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <aside class="walkin-summary-card">
+                    <div class="panel-header">
+                        <div>
+                            <h2>Booking summary</h2>
+                            <p>Use this as the quick quote before confirming.</p>
+                        </div>
+                    </div>
+
+                    <div class="walkin-selected-room">
+                        <div class="walkin-selected-image" id="selected-room-image">No room selected</div>
+                        <div>
+                            <span>Selected room</span>
+                            <strong id="preview-room">Choose a room</strong>
+                            <p id="preview-inclusions">Select a room card to show inclusions.</p>
+                        </div>
+                    </div>
+
+                    <div class="walkin-info-grid">
+                        <div class="walkin-info-block">
+                            <span>Stay length</span>
+                            <strong id="preview-nights">0 nights</strong>
+                        </div>
+                        <div class="walkin-info-block">
+                            <span>Room rate</span>
+                            <strong id="preview-price">PHP 0.00</strong>
+                        </div>
+                        <div class="walkin-info-block">
+                            <span>Total estimate</span>
+                            <strong id="preview-total">PHP 0.00</strong>
+                        </div>
+                        <div class="walkin-info-block">
+                            <span>Availability</span>
+                            <strong id="preview-available">Select a room and dates</strong>
+                            <div id="availability-status" class="available-status"><span class="available-dot"></span><span id="availability-label">Waiting for input</span></div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary walkin-confirm-btn">Confirm Walk-in Booking</button>
+                    <p class="walkin-subtitle">Final availability is checked again when submitted.</p>
+                </aside>
+            </div>
+        </form>
+    </div>
+</section>
+
+{{ room_data|json_script:"room-data" }}
+{{ confirmed_bookings_data|json_script:"confirmed-bookings-data" }}
+
+<script>
+(function() {
+    const roomData = JSON.parse(document.getElementById('room-data').textContent);
+    const confirmedBookings = JSON.parse(document.getElementById('confirmed-bookings-data').textContent);
+
+    const roomSelect = document.querySelector('[name="room"]');
+    const checkInInput = document.querySelector('[name="check_in"]');
+    const checkOutInput = document.querySelector('[name="check_out"]');
+    const roomCards = Array.from(document.querySelectorAll('[data-room-card]'));
+    const selectButtons = Array.from(document.querySelectorAll('[data-select-room]'));
+
+    const previewRoom = document.getElementById('preview-room');
+    const previewNights = document.getElementById('preview-nights');
+    const previewPrice = document.getElementById('preview-price');
+    const previewTotal = document.getElementById('preview-total');
+    const previewAvailable = document.getElementById('preview-available');
+    const previewInclusions = document.getElementById('preview-inclusions');
+    const selectedRoomImage = document.getElementById('selected-room-image');
+    const availabilityLabel = document.getElementById('availability-label');
+    const availabilityDot = document.querySelector('#availability-status .available-dot');
+
+    function parseDate(value) {
+        return value ? new Date(value + 'T00:00:00') : null;
+    }
+
+    function calculateNights(checkIn, checkOut) {
+        if (!checkIn || !checkOut) return 0;
+        const diff = (checkOut - checkIn) / (1000 * 60 * 60 * 24);
+        return diff > 0 ? diff : 0;
+    }
+
+    function getRoomById(roomId) {
+        return roomData.find(room => String(room.id) === String(roomId));
+    }
+
+    function countOverlappingBookings(roomId, checkIn, checkOut) {
+        if (!checkIn || !checkOut) return 0;
+        return confirmedBookings.filter(booking => {
+            if (String(booking.room_id) !== String(roomId)) return false;
+            const bookingStart = parseDate(booking.check_in);
+            const bookingEnd = parseDate(booking.check_out);
+            return bookingStart < checkOut && bookingEnd > checkIn;
+        }).length;
+    }
+
+    function getAvailability(room, checkIn, checkOut, nights) {
+        if (!room || !checkIn || !checkOut || nights <= 0) return null;
+        const overlapping = countOverlappingBookings(room.id, checkIn, checkOut);
+        return room.total_quantity - overlapping;
+    }
+
+    function formatMoney(value) {
+        return `PHP ${Number(value).toFixed(2)}`;
+    }
+
+    function setSelectedRoom(roomId) {
+        roomSelect.value = roomId;
+        updatePreview();
+    }
+
+    function updateRoomCards(checkIn, checkOut, nights) {
+        roomCards.forEach(card => {
+            const room = getRoomById(card.dataset.roomId);
+            const available = getAvailability(room, checkIn, checkOut, nights);
+            const chip = card.querySelector('[data-room-availability]');
+            const isSelected = String(roomSelect.value) === String(card.dataset.roomId);
+
+            card.classList.toggle('is-selected', isSelected);
+            card.classList.remove('is-unavailable');
+
+            if (available === null) {
+                chip.textContent = 'Choose dates';
+                chip.classList.remove('is-available', 'is-unavailable');
+            } else if (available > 0) {
+                chip.textContent = `${available} available`;
+                chip.classList.add('is-available');
+                chip.classList.remove('is-unavailable');
+            } else {
+                chip.textContent = 'Unavailable';
+                chip.classList.add('is-unavailable');
+                chip.classList.remove('is-available');
+                card.classList.add('is-unavailable');
+            }
+        });
+    }
+
+    function updateSelectedRoomImage(room) {
+        if (!room || !room.image_url) {
+            selectedRoomImage.textContent = room ? 'No image' : 'No room selected';
+            selectedRoomImage.style.backgroundImage = '';
+            return;
+        }
+
+        selectedRoomImage.textContent = '';
+        selectedRoomImage.style.backgroundImage = `url("${room.image_url}")`;
+    }
+
+    function updatePreview() {
+        const roomId = roomSelect.value;
+        const checkIn = parseDate(checkInInput.value);
+        const checkOut = parseDate(checkOutInput.value);
+        const nights = calculateNights(checkIn, checkOut);
+        const room = getRoomById(roomId);
+
+        updateRoomCards(checkIn, checkOut, nights);
+
+        if (!room) {
+            previewRoom.textContent = 'Choose a room';
+            previewNights.textContent = nights > 0 ? `${nights} night${nights === 1 ? '' : 's'}` : '0 nights';
+            previewPrice.textContent = 'PHP 0.00';
+            previewTotal.textContent = 'PHP 0.00';
+            previewAvailable.textContent = 'Select a room and dates';
+            previewInclusions.textContent = 'Select a room card to show inclusions.';
+            availabilityLabel.textContent = 'Waiting for input';
+            availabilityDot.classList.remove('unavailable');
+            updateSelectedRoomImage(null);
+            return;
+        }
+
+        previewRoom.textContent = room.name;
+        previewInclusions.textContent = room.inclusions;
+        previewNights.textContent = nights > 0 ? `${nights} night${nights === 1 ? '' : 's'}` : 'Choose dates';
+        previewPrice.textContent = formatMoney(room.price);
+        previewTotal.textContent = nights > 0 ? formatMoney(room.price * nights) : 'PHP 0.00';
+        updateSelectedRoomImage(room);
+
+        const available = getAvailability(room, checkIn, checkOut, nights);
+        if (available === null) {
+            previewAvailable.textContent = 'Select dates';
+            availabilityLabel.textContent = 'Waiting for input';
+            availabilityDot.classList.remove('unavailable');
+        } else {
+            previewAvailable.textContent = available > 0 ? `${available} rooms available` : 'No availability';
+            availabilityLabel.textContent = available > 0 ? 'Available' : 'Unavailable';
+            availabilityDot.classList.toggle('unavailable', available <= 0);
+        }
+    }
+
+    roomCards.forEach(card => {
+        card.addEventListener('click', event => {
+            if (event.target.closest('button')) return;
+            setSelectedRoom(card.dataset.roomId);
+        });
+    });
+
+    selectButtons.forEach(button => {
+        button.addEventListener('click', () => setSelectedRoom(button.dataset.selectRoom));
+    });
+
+    roomSelect.addEventListener('change', updatePreview);
+    checkInInput.addEventListener('change', updatePreview);
+    checkOutInput.addEventListener('change', updatePreview);
+    updatePreview();
+})();
+</script>
+{% endblock %}

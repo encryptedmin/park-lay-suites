@@ -1,0 +1,23 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="form-container">
+    <h1>Create an Account</h1>
+    <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem;">Join Park-Lay Suites for seamless online bookings.</p>
+    
+    <form method="post">
+        {% csrf_token %}
+        
+        {{ form.as_p }}
+        
+        <button type="submit" class="btn">Register</button>
+    </form>
+    
+    <div style="text-align: center; margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+        <p style="font-size: 0.9rem; color: var(--text-light);">
+            Already have an account? 
+            <a href="{% url 'login' %}" style="color: var(--primary); font-weight: 600; text-decoration: none;">Log in here</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

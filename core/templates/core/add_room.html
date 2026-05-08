@@ -1,0 +1,16 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+<div class="form-container">
+    <h1>Add New Room</h1>
+    <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem;">Enter the details and upload a photo for the new room inventory.</p>
+    
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        {{ form.as_p }}
+        
+        <button type="submit" class="btn">Save Room</button>
+    </form>
+</div>
+{% endblock %}
